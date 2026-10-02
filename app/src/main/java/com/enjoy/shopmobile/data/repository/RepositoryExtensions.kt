@@ -8,3 +8,7 @@ internal fun <T> Response<T>.requireBody(): T {
 }
 
 internal suspend fun <T> execute(block: suspend () -> T): Result<T> = runCatching { block() }
+
+internal fun Response<Unit>.requireBodyIfPresent() {
+    if (!isSuccessful) error("API request failed with HTTP ${code()}.")
+}

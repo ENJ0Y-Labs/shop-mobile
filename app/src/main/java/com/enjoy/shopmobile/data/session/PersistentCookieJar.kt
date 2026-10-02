@@ -96,6 +96,6 @@ class PersistentCookieJar(context: Context) : CookieJar {
 
     companion object {
         private const val PREFERENCES_NAME = "http_cookies"
-        private const val FIELD_SEPARATOR = ""
+        private const val FIELD_SEPARATOR = "\u0001"
     }
 }
