@@ -31,6 +31,12 @@ private fun ShopApp() {
     val productState by productViewModel.state.collectAsState()
     val selectedProduct by productViewModel.selectedProduct.collectAsState()
 
+    LaunchedEffect(authState) {
+        if (authState is AuthState.Authenticated) {
+            productViewModel.loadProducts()
+        }
+    }
+
     when (val auth = authState) {
         AuthState.Unknown, AuthState.Loading -> LoadingScreen()
         is AuthState.Unauthenticated -> LoginScreen(auth.message, authViewModel)
@@ -38,7 +44,11 @@ private fun ShopApp() {
             if (selectedProduct != null) {
                 ProductDetailsScreen(selectedProduct, false, productViewModel::closeProduct)
             } else {
-                ProductListScreen(productState, productViewModel::openProduct, productViewModel::loadProducts)
+                ProductListScreen(
+                    productState,
+                    productViewModel::openProduct,
+                    productViewModel::loadProducts
+                )
             }
         }
     }
@@ -55,13 +65,38 @@ private fun LoadingScreen() {
 private fun LoginScreen(message: String?, viewModel: AuthViewModel) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
-    Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) {
+
+    Column(
+        Modifier.fillMaxSize().padding(24.dp),
+        verticalArrangement = Arrangement.Center
+    ) {
         Text("ENJ0Y Shop", style = MaterialTheme.typography.headlineMedium)
         message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        OutlinedTextField(email, { email = it }, Modifier.fillMaxWidth(), label = { Text("Email") })
+
+        OutlinedTextField(
+            email,
+            { email = it },
+            Modifier.fillMaxWidth(),
+            label = { Text("Email") }
+        )
+
         Spacer(Modifier.height(12.dp))
-        OutlinedTextField(password, { password = it }, Modifier.fillMaxWidth(), label = { Text("Password") }, visualTransformation = PasswordVisualTransformation())
+
+        OutlinedTextField(
+            password,
+            { password = it },
+            Modifier.fillMaxWidth(),
+            label = { Text("Password") },
+            visualTransformation = PasswordVisualTransformation()
+        )
+
         Spacer(Modifier.height(16.dp))
-        Button(onClick = { viewModel.login(email, password) }, modifier = Modifier.fillMaxWidth()) { Text("Log in") }
+
+        Button(
+            onClick = { viewModel.login(email, password) },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Log in")
+        }
     }
 }
