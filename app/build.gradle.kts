@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.serialization")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
@@ -18,17 +19,13 @@ android {
         buildConfigField(
             "String",
             "API_BASE_URL",
-            ""https://shop-website-aner.onrender.com/api""
+            "\"https://shop-website-aner.onrender.com/api\""
         )
     }
 
     buildFeatures {
         compose = true
         buildConfig = true
-    }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.15"
     }
 
     packaging {
