@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Local development may use an HTTP backend. Release builds inherit the main manifest's HTTPS-only setting. -->
+    <application android:usesCleartextTraffic="true" />
+</manifest>
