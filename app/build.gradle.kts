@@ -21,6 +21,9 @@ android {
             "API_BASE_URL",
             "\"https://shop-website-aner.onrender.com/api\""
         )
+
+        // The production API is HTTPS. Keep the URL centralized in BuildConfig.
+        // Do not put credentials, API keys, or other server secrets here.
     }
 
     compileOptions {
