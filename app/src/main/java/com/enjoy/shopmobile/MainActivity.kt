@@ -10,7 +10,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import com.enjoy.shopmobile.ui.screens.CartScreen
 import com.enjoy.shopmobile.ui.screens.ProductDetailsScreen
 import com.enjoy.shopmobile.ui.screens.ProductListScreen
@@ -38,12 +41,33 @@ private fun ShopApp() {
     val selectedProduct by productViewModel.selectedProduct.collectAsState()
     val cartState by cartViewModel.state.collectAsState()
     var screen by rememberSaveable { mutableStateOf(ShopScreen.PRODUCTS) }
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     LaunchedEffect(authState) {
         if (authState is AuthState.Authenticated) {
             productViewModel.loadProducts()
             cartViewModel.loadCart()
             screen = ShopScreen.PRODUCTS
+        }
+    }
+
+    LaunchedEffect(screen) {
+        if (authState is AuthState.Authenticated && screen == ShopScreen.CART) {
+            cartViewModel.loadCart()
+        }
+    }
+
+    DisposableEffect(lifecycleOwner, screen, authState) {
+        if (authState !is AuthState.Authenticated || screen != ShopScreen.CART) {
+            onDispose { }
+        } else {
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    cartViewModel.loadCart(showLoading = false)
+                }
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
         }
     }
 
