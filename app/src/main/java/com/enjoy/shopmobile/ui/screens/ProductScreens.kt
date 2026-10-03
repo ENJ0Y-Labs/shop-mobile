@@ -1,15 +1,23 @@
 package com.enjoy.shopmobile.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -23,156 +31,117 @@ import com.enjoy.shopmobile.viewmodel.ProductListState
 private fun formatPrice(price: Long): String = "₦" + "%,d".format(price)
 
 @Composable
-fun ProductListScreen(
-    state: ProductListState,
-    cart: Cart?,
-    onProductClick: (String) -> Unit,
-    onRefresh: () -> Unit,
-    onCartClick: () -> Unit
-) {
-    Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Shop", style = MaterialTheme.typography.headlineMedium)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = onCartClick) {
-                    Text("Cart" + if (cart != null && cart.itemCount > 0) " (" + cart.itemCount + ")" else "")
+fun ProductListScreen(state: ProductListState, cart: Cart?, userName: String, onProductClick: (String) -> Unit, onRefresh: () -> Unit, onCartClick: () -> Unit, onLogout: () -> Unit) {
+    Scaffold(topBar = {
+        CenterAlignedTopAppBar(
+            title = { Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("enj0y", fontWeight = FontWeight.Bold); Text("SOLUTION", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary) } },
+            actions = { CartButton(cart?.itemCount ?: 0, onCartClick); IconButton(onClick = onLogout) { Icon(Icons.Default.Logout, "Log out") } }
+        )
+    }) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding)) {
+            Text("Hi, ${userName.substringBefore(" ").ifBlank { "there" }}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp))
+            when (state) {
+                ProductListState.Loading -> LoadingState()
+                ProductListState.Empty -> EmptyState("No products yet", "There are no products available right now.")
+                is ProductListState.Error -> ErrorState(state.message, onRefresh)
+                is ProductListState.Success -> LazyColumn(contentPadding = PaddingValues(horizontal = 20.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    items(state.products, key = { it.id }) { product -> ProductCard(product, onProductClick) }
                 }
-                TextButton(onClick = onRefresh) { Text("Refresh") }
-            }
-        }
-        when (state) {
-            ProductListState.Loading -> Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
-            ProductListState.Empty -> Box(Modifier.fillMaxSize(), Alignment.Center) { Text("No products found.") }
-            is ProductListState.Error -> ErrorProducts(state.message, onRefresh)
-            is ProductListState.Success -> LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(state.products, key = { it.id }) { product -> ProductCard(product, onProductClick) }
             }
         }
     }
 }
-
+@Composable
+private fun CartButton(itemCount: Int, onClick: () -> Unit) {
+    BadgedBox(Modifier.padding(end = 4.dp), badge = { if (itemCount > 0) Badge { Text(itemCount.coerceAtMost(99).toString()) } }) {
+        IconButton(onClick = onClick) { Icon(Icons.Default.ShoppingCart, "Cart") }
+    }
+}
 @Composable
 private fun ProductCard(product: Product, onClick: (String) -> Unit) {
-    Card(Modifier.fillMaxWidth().clickable { onClick(product.id) }) {
-        Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            AsyncImage(model = product.imageUrl, contentDescription = product.name, modifier = Modifier.size(96.dp), contentScale = ContentScale.Crop)
-            Column(Modifier.weight(1f)) {
+    Card(Modifier.fillMaxWidth().clickable { onClick(product.id) }, shape = RoundedCornerShape(14.dp)) {
+        Column {
+            Box(Modifier.fillMaxWidth().height(210.dp).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
+                AsyncImage(model = product.imageUrl, contentDescription = product.name, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            }
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                Text(product.category ?: "Shop", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 Text(product.name, fontWeight = FontWeight.SemiBold)
-                Text(formatPrice(product.price), style = MaterialTheme.typography.titleMedium)
-                Text(if (product.inStock) "In stock (" + product.stock + ")" else "Out of stock", color = if (product.inStock) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(formatPrice(product.price), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(if (product.inStock) "In stock" else "Sold out", color = if (product.inStock) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelMedium)
+                }
             }
         }
     }
 }
+@Composable private fun LoadingState() { Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() } }
+@Composable private fun EmptyState(title: String, message: String) { Box(Modifier.fillMaxSize().padding(32.dp), Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) { Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant) } } }
+@Composable private fun ErrorState(message: String, retry: () -> Unit) { Box(Modifier.fillMaxSize().padding(32.dp), Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) { Text("Something went wrong", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant); Button(onClick = retry) { Icon(Icons.Default.Refresh, null); Spacer(Modifier.width(8.dp)); Text("Try again") } } } }
 
 @Composable
-private fun ErrorProducts(message: String, retry: () -> Unit) {
-    Box(Modifier.fillMaxSize(), Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) { Text(message); Button(onClick = retry) { Text("Try again") } } }
-}
-
-@Composable
-fun ProductDetailsScreen(
-    product: Product?,
-    loading: Boolean,
-    error: String?,
-    onBack: () -> Unit,
-    onRetry: () -> Unit,
-    onAddToCart: (String) -> Unit,
-    adding: Boolean,
-    cartItemCount: Int,
-    onCartClick: () -> Unit
-) {
-    Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(onClick = onBack) { Text("Back") }
-            TextButton(onClick = onCartClick) { Text("Cart" + if (cartItemCount > 0) " (" + cartItemCount + ")" else "") }
-        }
+fun ProductDetailsScreen(product: Product?, loading: Boolean, error: String?, onBack: () -> Unit, onRetry: () -> Unit, onAddToCart: (String) -> Unit, adding: Boolean, cartItemCount: Int, onCartClick: () -> Unit) {
+    Scaffold(topBar = { TopAppBar(title = { Text("Product") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } }, actions = { CartButton(cartItemCount, onCartClick) }) }) { padding ->
         when {
-            loading -> Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
-            error != null -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(error)
-                    Button(onClick = onRetry) { Text("Try again") }
+            loading -> Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) { CircularProgressIndicator() }
+            error != null -> ErrorState(error, onRetry)
+            product == null -> EmptyState("Product unavailable", "We could not find that product.")
+            else -> Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
+                AsyncImage(model = product.imageUrl, contentDescription = product.name, Modifier.fillMaxWidth().height(320.dp), contentScale = ContentScale.Crop)
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(product.category ?: "Shop", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    Text(product.name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                    Text(formatPrice(product.price), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text(product.description ?: "No description available.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
+                    Text(if (product.inStock) "${product.stock} available" else "Sold out", color = if (product.inStock) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error, fontWeight = FontWeight.SemiBold)
+                    Button(onClick = { onAddToCart(product.id) }, enabled = product.inStock && !adding, Modifier.fillMaxWidth(), contentPadding = PaddingValues(vertical = 14.dp)) {
+                        if (adding) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) else Text(if (product.inStock) "Add to cart" else "Sold out")
+                    }
                 }
-            }
-            product == null -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Text("Select a product to view its details.")
-            }
-            else -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            AsyncImage(model = product.imageUrl, contentDescription = product.name, modifier = Modifier.fillMaxWidth().height(240.dp), contentScale = ContentScale.Crop)
-            Text(product.name, style = MaterialTheme.typography.headlineSmall)
-            Text(formatPrice(product.price), style = MaterialTheme.typography.headlineMedium)
-            Text(product.description ?: "No description available.")
-            Text(if (product.inStock) "In stock: " + product.stock else "Out of stock", color = if (product.inStock) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
-            Button(onClick = { onAddToCart(product.id) }, enabled = product.inStock && !adding, modifier = Modifier.fillMaxWidth()) {
-                if (adding) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                else Text(if (product.inStock) "Add to Cart" else "Out of Stock")
             }
         }
     }
 }
 
 @Composable
-fun CartScreen(
-    state: CartState,
-    onBack: () -> Unit,
-    onRefresh: () -> Unit,
-    onIncrease: (CartItem) -> Unit,
-    onDecrease: (CartItem) -> Unit,
-    onRemove: (CartItem) -> Unit,
-    onClear: () -> Unit
-) {
+fun CartScreen(state: CartState, onBack: () -> Unit, onRefresh: () -> Unit, onIncrease: (CartItem) -> Unit, onDecrease: (CartItem) -> Unit, onRemove: (CartItem) -> Unit, onClear: () -> Unit) {
     val cart = state.cart
-    Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(onClick = onBack) { Text("Back to Shop") }
-            TextButton(onClick = onRefresh, enabled = !state.loading) { Text("Refresh") }
-        }
-        state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp)) }
-        if (state.loading && cart == null) {
-            Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
-        } else if (cart == null || cart.items.isEmpty()) {
-            Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Your cart is empty.", style = MaterialTheme.typography.titleLarge)
-                    Spacer(Modifier.height(8.dp))
-                    Button(onClick = onBack) { Text("Continue Shopping") }
+    Scaffold(topBar = { TopAppBar(title = { Text("Your cart") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } }, actions = { IconButton(onClick = onRefresh, enabled = !state.loading) { Icon(Icons.Default.Refresh, "Refresh cart") } }) }) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding)) {
+            state.error?.let { Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.errorContainer) { Text(it, color = MaterialTheme.colorScheme.onErrorContainer, Modifier.padding(14.dp)) } }
+            if (state.loading && cart == null) LoadingState()
+            else if (cart == null || cart.items.isEmpty()) {
+                Box(Modifier.fillMaxSize(), Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) { Text("Your cart is empty", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold); Text("Add something you like and it will appear here.", color = MaterialTheme.colorScheme.onSurfaceVariant); Button(onClick = onBack) { Text("Continue shopping") } } }
+            } else {
+                LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(cart.items, key = { it.id }) { item -> CartItemRow(item, state.operationItemId == item.id, { onIncrease(item) }, { onDecrease(item) }, { onRemove(item) }) }
                 }
-            }
-        } else {
-            LazyColumn(modifier = Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(cart.items, key = { it.id }) { item ->
-                    CartItemRow(item, state.operationItemId == item.id, { onIncrease(item) }, { onDecrease(item) }, { onRemove(item) })
+                Surface(tonalElevation = 4.dp, Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Items", color = MaterialTheme.colorScheme.onSurfaceVariant); Text(cart.itemCount.toString(), fontWeight = FontWeight.SemiBold) }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Total", style = MaterialTheme.typography.titleMedium); Text(formatPrice(cart.total), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
+                        OutlinedButton(onClick = onClear, enabled = state.operationItemId == null && !state.loading, Modifier.fillMaxWidth()) { Text("Clear cart") }
+                    }
                 }
-            }
-            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Items: " + cart.itemCount)
-                Text("Total: " + formatPrice(cart.total), style = MaterialTheme.typography.titleLarge)
-                OutlinedButton(onClick = onClear, enabled = state.operationItemId == null && !state.loading, modifier = Modifier.fillMaxWidth()) { Text("Clear Cart") }
             }
         }
     }
 }
-
-@Composable
-private fun CartItemRow(item: CartItem, busy: Boolean, onIncrease: () -> Unit, onDecrease: () -> Unit, onRemove: () -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
+@Composable private fun CartItemRow(item: CartItem, busy: Boolean, onIncrease: () -> Unit, onDecrease: () -> Unit, onRemove: () -> Unit) {
+    Card(shape = RoundedCornerShape(14.dp)) {
         Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            AsyncImage(model = item.product.imageUrl, contentDescription = item.product.name, modifier = Modifier.size(88.dp), contentScale = ContentScale.Crop)
+            AsyncImage(model = item.product.imageUrl, contentDescription = item.product.name, Modifier.size(84.dp).clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(item.product.name, fontWeight = FontWeight.SemiBold)
-                Text(formatPrice(item.product.price))
-                Text("Subtotal: " + formatPrice(item.subtotal))
+                Text(formatPrice(item.product.price), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Subtotal: ${formatPrice(item.subtotal)}", fontWeight = FontWeight.SemiBold)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(onClick = onDecrease, enabled = !busy) { Text("−") }
-                    Text(item.quantity.toString(), modifier = Modifier.padding(horizontal = 12.dp))
+                    Text(item.quantity.toString(), Modifier.padding(horizontal = 14.dp), fontWeight = FontWeight.Bold)
                     OutlinedButton(onClick = onIncrease, enabled = !busy && item.quantity < item.product.stock) { Text("+") }
                 }
                 TextButton(onClick = onRemove, enabled = !busy) { Text("Remove") }
-                if (item.quantity >= item.product.stock && item.product.stock > 0) Text("Maximum available stock reached.", style = MaterialTheme.typography.bodySmall)
+                if (item.quantity >= item.product.stock && item.product.stock > 0) Text("Maximum available stock reached.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
