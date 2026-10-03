@@ -74,7 +74,9 @@ private fun ErrorProducts(message: String, retry: () -> Unit) {
 fun ProductDetailsScreen(
     product: Product?,
     loading: Boolean,
+    error: String?,
     onBack: () -> Unit,
+    onRetry: () -> Unit,
     onAddToCart: (String) -> Unit,
     adding: Boolean,
     cartItemCount: Int,
@@ -85,9 +87,21 @@ fun ProductDetailsScreen(
             TextButton(onClick = onBack) { Text("Back") }
             TextButton(onClick = onCartClick) { Text("Cart" + if (cartItemCount > 0) " (" + cartItemCount + ")" else "") }
         }
-        if (loading) Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
-        else if (product == null) Box(Modifier.fillMaxSize(), Alignment.Center) { Text("Product could not be loaded.") }
-        else Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        when {
+            loading -> Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
+            error != null -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(error)
+                    Button(onClick = onRetry) { Text("Try again") }
+                }
+            }
+            product == null -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                Text("Select a product to view its details.")
+            }
+            else -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             AsyncImage(model = product.imageUrl, contentDescription = product.name, modifier = Modifier.fillMaxWidth().height(240.dp), contentScale = ContentScale.Crop)
             Text(product.name, style = MaterialTheme.typography.headlineSmall)
             Text(formatPrice(product.price), style = MaterialTheme.typography.headlineMedium)
