@@ -7,6 +7,7 @@ import java.io.IOException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import kotlinx.coroutines.CancellationException
 
 sealed class ApiError(message: String) : Exception(message) {
     class Http(val statusCode: Int, message: String) : ApiError(message)
@@ -28,5 +29,6 @@ internal fun Throwable.toUserMessage(): String = when (this) {
         else -> "The shop could not complete that request. Please try again."
     }
     is SQLiteException -> "The app could not read its local data. Please try again."
+    is IllegalStateException -> message ?: "The server returned an invalid response. Please try again later."
     else -> "Something went wrong. Please try again."
 }
