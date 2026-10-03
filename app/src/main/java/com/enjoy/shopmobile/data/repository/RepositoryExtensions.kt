@@ -1,6 +1,7 @@
 package com.enjoy.shopmobile.data.repository
 
 import retrofit2.Response
+import kotlinx.coroutines.CancellationException
 
 internal fun <T> Response<T>.requireBody(): T {
     if (isSuccessful) return body() ?: error("The server returned an empty response.")
@@ -28,6 +29,10 @@ private fun <T> Response<T>.errorMessage(): String {
 }
 
 internal suspend fun <T> execute(block: suspend () -> T): Result<T> =
-    runCatching { block() }.recoverCatching { error ->
-        throw Exception(error.toUserMessage(), error)
+    try {
+        Result.success(block())
+    } catch (error: CancellationException) {
+        throw error
+    } catch (error: Throwable) {
+        Result.failure(Exception(error.toUserMessage(), error))
     }
