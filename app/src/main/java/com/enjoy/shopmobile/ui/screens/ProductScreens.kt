@@ -21,14 +21,39 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import com.enjoy.shopmobile.data.model.Cart
 import com.enjoy.shopmobile.data.model.CartItem
 import com.enjoy.shopmobile.data.model.Product
 import com.enjoy.shopmobile.viewmodel.CartState
 import com.enjoy.shopmobile.viewmodel.ProductListState
+import java.util.Locale
 
-private fun formatPrice(price: Long): String = "₦" + "%,d".format(price)
+private fun formatPrice(price: Long): String {
+    val whole = price / 100
+    val cents = price % 100
+    return String.format(Locale.US, "₦%,d.%02d", whole, cents)
+}
+
+@Composable
+private fun ProductImage(model: String?, name: String, modifier: Modifier) {
+    SubcomposeAsyncImage(
+        model = model,
+        contentDescription = name,
+        modifier = modifier,
+        contentScale = ContentScale.Crop,
+        loading = {
+            Box(Modifier.fillMaxSize(), Alignment.Center) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+            }
+        },
+        error = {
+            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant), Alignment.Center) {
+                Text(name.take(1).uppercase(), style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            }
+        }
+    )
+}
 
 @Composable
 fun ProductListScreen(state: ProductListState, cart: Cart?, userName: String, onProductClick: (String) -> Unit, onRefresh: () -> Unit, onCartClick: () -> Unit, onLogout: () -> Unit) {
@@ -62,7 +87,7 @@ private fun ProductCard(product: Product, onClick: (String) -> Unit) {
     Card(Modifier.fillMaxWidth().clickable { onClick(product.id) }, shape = RoundedCornerShape(14.dp)) {
         Column {
             Box(Modifier.fillMaxWidth().height(210.dp).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
-                AsyncImage(model = product.imageUrl, contentDescription = product.name, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                ProductImage(product.imageUrl, product.name, Modifier.fillMaxSize())
             }
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 Text(product.category ?: "Shop", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
@@ -87,7 +112,7 @@ fun ProductDetailsScreen(product: Product?, loading: Boolean, error: String?, on
             error != null -> ErrorState(error, onRetry)
             product == null -> EmptyState("Product unavailable", "We could not find that product.")
             else -> Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
-                AsyncImage(model = product.imageUrl, contentDescription = product.name, Modifier.fillMaxWidth().height(320.dp), contentScale = ContentScale.Crop)
+                ProductImage(product.imageUrl, product.name, Modifier.fillMaxWidth().height(320.dp))
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(product.category ?: "Shop", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                     Text(product.name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
@@ -130,7 +155,7 @@ fun CartScreen(state: CartState, onBack: () -> Unit, onRefresh: () -> Unit, onIn
 @Composable private fun CartItemRow(item: CartItem, busy: Boolean, onIncrease: () -> Unit, onDecrease: () -> Unit, onRemove: () -> Unit) {
     Card(shape = RoundedCornerShape(14.dp)) {
         Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            AsyncImage(model = item.product.imageUrl, contentDescription = item.product.name, Modifier.size(84.dp).clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop)
+            ProductImage(item.product.imageUrl, item.product.name, Modifier.size(84.dp).clip(RoundedCornerShape(10.dp)))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(item.product.name, fontWeight = FontWeight.SemiBold)
                 Text(formatPrice(item.product.price), color = MaterialTheme.colorScheme.onSurfaceVariant)
