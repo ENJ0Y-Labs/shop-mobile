@@ -57,9 +57,15 @@ fun ShopTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = ShopColors,
         typography = ShopTypography,
-        shapes = ShopShapes,
-        content = content
-    )
+        shapes = ShopShapes
+    ) {
+        Surface(
+            modifier = androidx.compose.ui.Modifier.fillMaxSize(),
+            color = ShopColors.background,
+            contentColor = ShopColors.onBackground,
+            content = content
+        )
+    }
 }
 
 object ShopThemeDefaults {
