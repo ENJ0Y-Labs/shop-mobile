@@ -1,13 +1,19 @@
 package com.enjoy.shopmobile
-
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -17,6 +23,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import com.enjoy.shopmobile.ui.screens.CartScreen
 import com.enjoy.shopmobile.ui.screens.ProductDetailsScreen
 import com.enjoy.shopmobile.ui.screens.ProductListScreen
+import com.enjoy.shopmobile.ui.theme.ShopTheme
 import com.enjoy.shopmobile.viewmodel.AuthState
 import com.enjoy.shopmobile.viewmodel.AuthViewModel
 import com.enjoy.shopmobile.viewmodel.CartViewModel
@@ -25,11 +32,12 @@ import com.enjoy.shopmobile.viewmodel.ProductViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
-        setContent { MaterialTheme { ShopApp() } }
+        enableEdgeToEdge()
+        setContent { ShopTheme { ShopApp() } }
     }
 }
-
 private enum class ShopScreen { PRODUCTS, DETAILS, CART }
 
 @Composable
@@ -42,6 +50,7 @@ private fun ShopApp() {
     val detailsState by productViewModel.detailsState.collectAsState()
     val cartState by cartViewModel.state.collectAsState()
     var screen by rememberSaveable { mutableStateOf(ShopScreen.PRODUCTS) }
+    var showRegister by rememberSaveable { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
 
     LaunchedEffect(authState) {
@@ -49,23 +58,18 @@ private fun ShopApp() {
             productViewModel.loadProducts()
             cartViewModel.loadCart()
             screen = ShopScreen.PRODUCTS
+            showRegister = false
         }
     }
-
     LaunchedEffect(screen) {
-        if (authState is AuthState.Authenticated && screen == ShopScreen.CART) {
-            cartViewModel.loadCart()
-        }
+        if (authState is AuthState.Authenticated && screen == ShopScreen.CART) cartViewModel.loadCart()
     }
-
     DisposableEffect(lifecycleOwner, screen, authState) {
         if (authState !is AuthState.Authenticated || screen != ShopScreen.CART) {
             onDispose { }
         } else {
             val observer = LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_RESUME) {
-                    cartViewModel.loadCart(showLoading = false)
-                }
+                if (event == Lifecycle.Event.ON_RESUME) cartViewModel.loadCart(showLoading = false)
             }
             lifecycleOwner.lifecycle.addObserver(observer)
             onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -74,19 +78,24 @@ private fun ShopApp() {
 
     when (val auth = authState) {
         AuthState.Unknown, AuthState.Loading -> LoadingScreen()
-        is AuthState.Unauthenticated -> LoginScreen(auth.message, authViewModel)
+        is AuthState.Unauthenticated -> if (showRegister) {
+            RegisterScreen(auth.message, authViewModel) {
+                showRegister = false
+                authViewModel.clearMessage()
+            }
+        } else {
+            LoginScreen(auth.message, authViewModel) {
+                showRegister = true
+                authViewModel.clearMessage()
+            }
+        }
         is AuthState.Authenticated -> when (screen) {
             ShopScreen.PRODUCTS -> ProductListScreen(
-                productState, cartState.cart, {
-                    productViewModel.openProduct(it)
-                    screen = ShopScreen.DETAILS
-                }, {
-                    productViewModel.loadProducts()
-                    cartViewModel.loadCart()
-                }, {
-                    cartViewModel.loadCart()
-                    screen = ShopScreen.CART
-                }
+                productState, cartState.cart, auth.user.name,
+                { productViewModel.openProduct(it); screen = ShopScreen.DETAILS },
+                { productViewModel.loadProducts(); cartViewModel.loadCart() },
+                { cartViewModel.loadCart(); screen = ShopScreen.CART },
+                { authViewModel.logout() }
             )
             ShopScreen.DETAILS -> {
                 val detail = detailsState
@@ -94,22 +103,12 @@ private fun ShopApp() {
                     product = (detail as? ProductDetailsState.Success)?.product,
                     loading = detail is ProductDetailsState.Loading,
                     error = (detail as? ProductDetailsState.Error)?.message,
-                    onBack = {
-                        productViewModel.closeProduct()
-                        screen = ShopScreen.PRODUCTS
-                    },
-                    onRetry = {
-                        if (detail is ProductDetailsState.Error) {
-                            productViewModel.openProduct(detail.productId)
-                        }
-                    },
+                    onBack = { productViewModel.closeProduct(); screen = ShopScreen.PRODUCTS },
+                    onRetry = { if (detail is ProductDetailsState.Error) productViewModel.openProduct(detail.productId) },
                     onAddToCart = { cartViewModel.addItem(it) },
                     adding = cartState.operationItemId == "add",
                     cartItemCount = cartState.cart?.itemCount ?: 0
-                ) {
-                    cartViewModel.loadCart()
-                    screen = ShopScreen.CART
-                }
+                ) { cartViewModel.loadCart(); screen = ShopScreen.CART }
             }
             ShopScreen.CART -> CartScreen(
                 cartState,
@@ -126,20 +125,67 @@ private fun ShopApp() {
 
 @Composable
 private fun LoadingScreen() {
-    Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) { CircularProgressIndicator() }
+    Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+    }
 }
-
 @Composable
-private fun LoginScreen(message: String?, viewModel: AuthViewModel) {
+private fun AuthHeader(eyebrow: String, title: String, subtitle: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.primary) {
+                Icon(Icons.Default.ShoppingBag, null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.padding(8.dp).size(20.dp))
+            }
+            Text("enj0y Solution", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        }
+        Spacer(Modifier.height(12.dp))
+        Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+        Text(title, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+        Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+@Composable
+private fun LoginScreen(message: String?, viewModel: AuthViewModel, onCreateAccount: () -> Unit) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
-    Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) {
-        Text("ENJ0Y Shop", style = MaterialTheme.typography.headlineMedium)
-        message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        OutlinedTextField(email, { email = it }, Modifier.fillMaxWidth(), label = { Text("Email") })
-        Spacer(Modifier.height(12.dp))
-        OutlinedTextField(password, { password = it }, Modifier.fillMaxWidth(), label = { Text("Password") }, visualTransformation = PasswordVisualTransformation())
-        Spacer(Modifier.height(16.dp))
-        Button(onClick = { viewModel.login(email, password) }, modifier = Modifier.fillMaxWidth()) { Text("Log in") }
+    AuthSurface {
+        AuthHeader("Welcome back", "Sign in", "Access your cart and orders.")
+        message?.let { AuthError(it) }
+        OutlinedTextField(email, { email = it }, Modifier.fillMaxWidth(), label = { Text("Email") }, singleLine = true)
+        OutlinedTextField(password, { password = it }, Modifier.fillMaxWidth(), label = { Text("Password") }, visualTransformation = PasswordVisualTransformation(), singleLine = true)
+        Button(onClick = { viewModel.login(email, password) }, Modifier.fillMaxWidth(), contentPadding = PaddingValues(vertical = 14.dp)) { Text("Sign in") }
+        TextButton(onClick = onCreateAccount, Modifier.fillMaxWidth()) { Text("New here? Create an account") }
+    }
+}
+@Composable
+private fun RegisterScreen(message: String?, viewModel: AuthViewModel, onBackToLogin: () -> Unit) {
+    var name by rememberSaveable { mutableStateOf("") }
+    var email by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
+    AuthSurface {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBackToLogin) { Icon(Icons.Default.ArrowBack, "Back") }
+            Text("Back to sign in", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        AuthHeader("Create your account", "Join enj0y Solution", "One account for your cart and orders.")
+        message?.let { AuthError(it) }
+        OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), label = { Text("Full name") }, singleLine = true)
+        OutlinedTextField(email, { email = it }, Modifier.fillMaxWidth(), label = { Text("Email") }, singleLine = true)
+        OutlinedTextField(password, { password = it }, Modifier.fillMaxWidth(), label = { Text("Password") }, visualTransformation = PasswordVisualTransformation(), singleLine = true)
+        Button(onClick = { viewModel.register(name, email, password) }, Modifier.fillMaxWidth(), contentPadding = PaddingValues(vertical = 14.dp)) { Text("Create account") }
+    }
+}
+@Composable
+private fun AuthSurface(content: @Composable ColumnScope.() -> Unit) {
+    Box(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 24.dp), contentAlignment = Alignment.Center) {
+        Card(Modifier.fillMaxWidth().widthIn(max = 460.dp)) {
+            Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp), content = content)
+        }
+    }
+}
+@Composable
+private fun AuthError(message: String) {
+    Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.errorContainer, shape = MaterialTheme.shapes.small) {
+        Text(message, color = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.padding(12.dp))
     }
 }
