@@ -1,0 +1,15 @@
+<resources>
+    <style name="Theme.ShopMobile" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#FF7A00</item>
+        <item name="android:navigationBarColor">#090909</item>
+        <item name="android:statusBarColor">#090909</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+    <style name="Theme.ShopMobile.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#090909</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.ShopMobile</item>
+    </style>
+</resources>
