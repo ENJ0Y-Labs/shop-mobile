@@ -6,7 +6,7 @@
         android:icon="@drawable/ic_launcher"
         android:label="enj0y Solution"
         android:supportsRtl="true"
-        android:theme="@style/Theme.ShopMobile"
+        android:theme="@style/Theme.ShopMobile.Starting"
         android:usesCleartextTraffic="false">
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
