@@ -1,5 +1,7 @@
 package com.enjoy.shopmobile.ui.screens
 
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -7,8 +9,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
@@ -60,7 +62,7 @@ fun ProductListScreen(state: ProductListState, cart: Cart?, userName: String, on
     Scaffold(topBar = {
         CenterAlignedTopAppBar(
             title = { Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("enj0y", fontWeight = FontWeight.Bold); Text("SOLUTION", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary) } },
-            actions = { CartButton(cart?.itemCount ?: 0, onCartClick); IconButton(onClick = onLogout) { Icon(Icons.Default.Logout, "Log out") } }
+            actions = { CartButton(cart?.itemCount ?: 0, onCartClick); IconButton(onClick = onLogout) { Icon(Icons.AutoMirrored.Filled.Logout, "Log out") } }
         )
     }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
@@ -78,7 +80,7 @@ fun ProductListScreen(state: ProductListState, cart: Cart?, userName: String, on
 }
 @Composable
 private fun CartButton(itemCount: Int, onClick: () -> Unit) {
-    BadgedBox(Modifier.padding(end = 4.dp), badge = { if (itemCount > 0) Badge { Text(itemCount.coerceAtMost(99).toString()) } }) {
+    BadgedBox(modifier = Modifier.padding(end = 4.dp), badge = { if (itemCount > 0) Badge { Text(itemCount.coerceAtMost(99).toString()) } }) {
         IconButton(onClick = onClick) { Icon(Icons.Default.ShoppingCart, "Cart") }
     }
 }
@@ -106,7 +108,7 @@ private fun ProductCard(product: Product, onClick: (String) -> Unit) {
 
 @Composable
 fun ProductDetailsScreen(product: Product?, loading: Boolean, error: String?, onBack: () -> Unit, onRetry: () -> Unit, onAddToCart: (String) -> Unit, adding: Boolean, cartItemCount: Int, onCartClick: () -> Unit) {
-    Scaffold(topBar = { TopAppBar(title = { Text("Product") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } }, actions = { CartButton(cartItemCount, onCartClick) }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text("Product") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }, actions = { CartButton(cartItemCount, onCartClick) }) }) { padding ->
         when {
             loading -> Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) { CircularProgressIndicator() }
             error != null -> ErrorState(error, onRetry)
@@ -119,7 +121,7 @@ fun ProductDetailsScreen(product: Product?, loading: Boolean, error: String?, on
                     Text(formatPrice(product.price), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                     Text(product.description ?: "No description available.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
                     Text(if (product.inStock) "${product.stock} available" else "Sold out", color = if (product.inStock) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error, fontWeight = FontWeight.SemiBold)
-                    Button(onClick = { onAddToCart(product.id) }, enabled = product.inStock && !adding, Modifier.fillMaxWidth(), contentPadding = PaddingValues(vertical = 14.dp)) {
+                    Button(onClick = { onAddToCart(product.id) }, enabled = product.inStock && !adding, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(vertical = 14.dp)) {
                         if (adding) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) else Text(if (product.inStock) "Add to cart" else "Sold out")
                     }
                 }
@@ -133,7 +135,7 @@ fun CartScreen(state: CartState, onBack: () -> Unit, onRefresh: () -> Unit, onIn
     val cart = state.cart
     Scaffold(topBar = { TopAppBar(title = { Text("Your cart") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } }, actions = { IconButton(onClick = onRefresh, enabled = !state.loading) { Icon(Icons.Default.Refresh, "Refresh cart") } }) }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            state.error?.let { Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.errorContainer) { Text(it, color = MaterialTheme.colorScheme.onErrorContainer, Modifier.padding(14.dp)) } }
+            state.error?.let { Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.errorContainer) { Text(it, color = MaterialTheme.colorScheme.onErrorContainer, Modifier.padding(14.dp)) } }
             if (state.loading && cart == null) LoadingState()
             else if (cart == null || cart.items.isEmpty()) {
                 Box(Modifier.fillMaxSize(), Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) { Text("Your cart is empty", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold); Text("Add something you like and it will appear here.", color = MaterialTheme.colorScheme.onSurfaceVariant); Button(onClick = onBack) { Text("Continue shopping") } } }
@@ -141,11 +143,11 @@ fun CartScreen(state: CartState, onBack: () -> Unit, onRefresh: () -> Unit, onIn
                 LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(cart.items, key = { it.id }) { item -> CartItemRow(item, state.operationItemId == item.id, { onIncrease(item) }, { onDecrease(item) }, { onRemove(item) }) }
                 }
-                Surface(tonalElevation = 4.dp, Modifier.fillMaxWidth()) {
+                Surface(modifier = Modifier.fillMaxWidth(), tonalElevation = 4.dp) {
                     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Items", color = MaterialTheme.colorScheme.onSurfaceVariant); Text(cart.itemCount.toString(), fontWeight = FontWeight.SemiBold) }
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Total", style = MaterialTheme.typography.titleMedium); Text(formatPrice(cart.total), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
-                        OutlinedButton(onClick = onClear, enabled = state.operationItemId == null && !state.loading, Modifier.fillMaxWidth()) { Text("Clear cart") }
+                        OutlinedButton(onClick = onClear, enabled = state.operationItemId == null && !state.loading, modifier = Modifier.fillMaxWidth()) { Text("Clear cart") }
                     }
                 }
             }
@@ -162,7 +164,7 @@ fun CartScreen(state: CartState, onBack: () -> Unit, onRefresh: () -> Unit, onIn
                 Text("Subtotal: ${formatPrice(item.subtotal)}", fontWeight = FontWeight.SemiBold)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(onClick = onDecrease, enabled = !busy) { Text("−") }
-                    Text(item.quantity.toString(), Modifier.padding(horizontal = 14.dp), fontWeight = FontWeight.Bold)
+                    Text(item.quantity.toString(), modifier = Modifier.padding(horizontal = 14.dp), fontWeight = FontWeight.Bold)
                     OutlinedButton(onClick = onIncrease, enabled = !busy && item.quantity < item.product.stock) { Text("+") }
                 }
                 TextButton(onClick = onRemove, enabled = !busy) { Text("Remove") }
