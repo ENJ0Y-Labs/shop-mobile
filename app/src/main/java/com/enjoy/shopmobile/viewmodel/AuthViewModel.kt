@@ -19,30 +19,22 @@ sealed interface AuthState {
 }
 
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = AuthRepository(
-        api = ApiClient.service(application),
-        context = application
-    )
-
+    private val repository = AuthRepository(ApiClient.service(application), application)
     private val _state = MutableStateFlow<AuthState>(AuthState.Unknown)
     val state: StateFlow<AuthState> = _state.asStateFlow()
 
-    init {
-        checkSession()
+    init { checkSession() }
+
+    fun clearMessage() {
+        if (_state.value is AuthState.Unauthenticated) _state.value = AuthState.Unauthenticated()
     }
 
     fun checkSession() {
         viewModelScope.launch {
             _state.value = AuthState.Loading
             repository.currentUser()
-                .onSuccess { user ->
-                    _state.value = AuthState.Authenticated(user)
-                }
-                .onFailure { error ->
-                    _state.value = AuthState.Unauthenticated(
-                        error.message ?: "Your session could not be restored. Please log in again."
-                    )
-                }
+                .onSuccess { _state.value = AuthState.Authenticated(it) }
+                .onFailure { _state.value = AuthState.Unauthenticated(it.message ?: "Your session could not be restored. Please log in again.") }
         }
     }
 
@@ -51,18 +43,34 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             _state.value = AuthState.Unauthenticated("Enter your email and password.")
             return
         }
-
         viewModelScope.launch {
             _state.value = AuthState.Loading
             repository.login(email.trim(), password)
-                .onSuccess { user ->
-                    _state.value = AuthState.Authenticated(user)
-                }
-                .onFailure { error ->
-                    _state.value = AuthState.Unauthenticated(
-                        error.message ?: "Login failed."
-                    )
-                }
+                .onSuccess { _state.value = AuthState.Authenticated(it) }
+                .onFailure { _state.value = AuthState.Unauthenticated(it.message ?: "Login failed.") }
+        }
+    }
+
+    fun register(name: String, email: String, password: String) {
+        when {
+            name.isBlank() -> {
+                _state.value = AuthState.Unauthenticated("Enter your full name.")
+                return
+            }
+            email.isBlank() || password.isBlank() -> {
+                _state.value = AuthState.Unauthenticated("Enter your email and password.")
+                return
+            }
+            password.length < 8 -> {
+                _state.value = AuthState.Unauthenticated("Password must be at least 8 characters.")
+                return
+            }
+        }
+        viewModelScope.launch {
+            _state.value = AuthState.Loading
+            repository.register(email.trim(), password, name.trim())
+                .onSuccess { _state.value = AuthState.Authenticated(it) }
+                .onFailure { _state.value = AuthState.Unauthenticated(it.message ?: "Account creation failed.") }
         }
     }
 
@@ -70,14 +78,8 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _state.value = AuthState.Loading
             repository.logout()
-                .onSuccess {
-                    _state.value = AuthState.Unauthenticated("Logged out")
-                }
-                .onFailure { error ->
-                    _state.value = AuthState.Unauthenticated(
-                        error.message ?: "Logout failed."
-                    )
-                }
+                .onSuccess { _state.value = AuthState.Unauthenticated("Logged out") }
+                .onFailure { _state.value = AuthState.Unauthenticated(it.message ?: "Logout failed.") }
         }
     }
 }
