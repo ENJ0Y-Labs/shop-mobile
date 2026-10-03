@@ -18,12 +18,19 @@ sealed interface ProductListState {
     data class Error(val message: String) : ProductListState
 }
 
+sealed interface ProductDetailsState {
+    data object Idle : ProductDetailsState
+    data object Loading : ProductDetailsState
+    data class Success(val product: Product) : ProductDetailsState
+    data class Error(val productId: String, val message: String) : ProductDetailsState
+}
+
 class ProductViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = ProductRepository(ApiClient.service(application))
     private val _state = MutableStateFlow<ProductListState>(ProductListState.Loading)
     val state: StateFlow<ProductListState> = _state.asStateFlow()
-    private val _selectedProduct = MutableStateFlow<Product?>(null)
-    val selectedProduct: StateFlow<Product?> = _selectedProduct.asStateFlow()
+    private val _detailsState = MutableStateFlow<ProductDetailsState>(ProductDetailsState.Idle)
+    val detailsState: StateFlow<ProductDetailsState> = _detailsState.asStateFlow()
 
     init { loadProducts() }
 
@@ -40,12 +47,12 @@ class ProductViewModel(application: Application) : AndroidViewModel(application)
 
     fun openProduct(productId: String) {
         viewModelScope.launch {
-            _selectedProduct.value = null
+            _detailsState.value = ProductDetailsState.Loading
             repository.getProduct(productId)
-                .onSuccess { _selectedProduct.value = it }
-                .onFailure { _state.value = ProductListState.Error(it.message ?: "Could not load product.") }
+                .onSuccess { _detailsState.value = ProductDetailsState.Success(it) }
+                .onFailure { _detailsState.value = ProductDetailsState.Error(productId, it.message ?: "Could not load this product.") }
         }
     }
 
-    fun closeProduct() { _selectedProduct.value = null }
+    fun closeProduct() { _detailsState.value = ProductDetailsState.Idle }
 }
