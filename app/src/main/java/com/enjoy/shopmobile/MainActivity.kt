@@ -20,6 +20,7 @@ import com.enjoy.shopmobile.ui.screens.ProductListScreen
 import com.enjoy.shopmobile.viewmodel.AuthState
 import com.enjoy.shopmobile.viewmodel.AuthViewModel
 import com.enjoy.shopmobile.viewmodel.CartViewModel
+import com.enjoy.shopmobile.viewmodel.ProductDetailsState
 import com.enjoy.shopmobile.viewmodel.ProductViewModel
 
 class MainActivity : ComponentActivity() {
@@ -38,7 +39,7 @@ private fun ShopApp() {
     val cartViewModel: CartViewModel = viewModel()
     val authState by authViewModel.state.collectAsState()
     val productState by productViewModel.state.collectAsState()
-    val selectedProduct by productViewModel.selectedProduct.collectAsState()
+    val detailsState by productViewModel.detailsState.collectAsState()
     val cartState by cartViewModel.state.collectAsState()
     var screen by rememberSaveable { mutableStateOf(ShopScreen.PRODUCTS) }
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -87,14 +88,28 @@ private fun ShopApp() {
                     screen = ShopScreen.CART
                 }
             )
-            ShopScreen.DETAILS -> ProductDetailsScreen(
-                selectedProduct, selectedProduct == null, productViewModel::closeProduct,
-                { cartViewModel.addItem(it) },
-                cartState.operationItemId == "add",
-                cartState.cart?.itemCount ?: 0
-            ) {
-                cartViewModel.loadCart()
-                screen = ShopScreen.CART
+            ShopScreen.DETAILS -> {
+                val detail = detailsState
+                ProductDetailsScreen(
+                    product = (detail as? ProductDetailsState.Success)?.product,
+                    loading = detail is ProductDetailsState.Loading,
+                    error = (detail as? ProductDetailsState.Error)?.message,
+                    onBack = {
+                        productViewModel.closeProduct()
+                        screen = ShopScreen.PRODUCTS
+                    },
+                    onRetry = {
+                        if (detail is ProductDetailsState.Error) {
+                            productViewModel.openProduct(detail.productId)
+                        }
+                    },
+                    onAddToCart = { cartViewModel.addItem(it) },
+                    adding = cartState.operationItemId == "add",
+                    cartItemCount = cartState.cart?.itemCount ?: 0
+                ) {
+                    cartViewModel.loadCart()
+                    screen = ShopScreen.CART
+                }
             }
             ShopScreen.CART -> CartScreen(
                 cartState,
