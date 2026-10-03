@@ -7,7 +7,6 @@ import java.io.IOException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
-import kotlinx.coroutines.CancellationException
 
 sealed class ApiError(message: String) : Exception(message) {
     class Http(val statusCode: Int, message: String) : ApiError(message)
