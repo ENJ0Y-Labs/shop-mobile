@@ -38,8 +38,10 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                 .onSuccess { user ->
                     _state.value = AuthState.Authenticated(user)
                 }
-                .onFailure {
-                    _state.value = AuthState.Unauthenticated("No active session")
+                .onFailure { error ->
+                    _state.value = AuthState.Unauthenticated(
+                        error.message ?: "Your session could not be restored. Please log in again."
+                    )
                 }
         }
     }
