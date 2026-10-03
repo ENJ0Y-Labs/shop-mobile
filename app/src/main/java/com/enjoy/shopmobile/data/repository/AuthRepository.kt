@@ -16,7 +16,17 @@ class AuthRepository(
         execute { api.register(RegisterRequest(email, password, name)).requireBody().user }
 
     suspend fun currentUser(): Result<User> =
-        execute { api.me().requireBody().user }
+        execute {
+            val response = api.me()
+            if (response.code() == 401) {
+                ApiClient.clearSession(context)
+                throw ApiError.Http(
+                    statusCode = 401,
+                    message = "Your session has expired. Please log in again."
+                )
+            }
+            response.requireBody().user
+        }
 
     suspend fun logout(): Result<Unit> =
         execute {
