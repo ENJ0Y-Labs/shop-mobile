@@ -28,6 +28,8 @@ import coil.compose.SubcomposeAsyncImage
 import com.enjoy.shopmobile.data.model.Cart
 import com.enjoy.shopmobile.data.model.CartItem
 import com.enjoy.shopmobile.data.model.Product
+import com.enjoy.shopmobile.data.model.CheckoutRequest
+import com.enjoy.shopmobile.viewmodel.CheckoutState
 import com.enjoy.shopmobile.viewmodel.CartState
 import com.enjoy.shopmobile.viewmodel.ProductListState
 import java.util.Locale
@@ -59,11 +61,11 @@ private fun ProductImage(model: String?, name: String, modifier: Modifier) {
 }
 
 @Composable
-fun ProductListScreen(state: ProductListState, cart: Cart?, userName: String, onProductClick: (String) -> Unit, onRefresh: () -> Unit, onCartClick: () -> Unit, onLogout: () -> Unit) {
+fun ProductListScreen(state: ProductListState, cart: Cart?, userName: String, authenticated: Boolean, onProductClick: (String) -> Unit, onRefresh: () -> Unit, onCartClick: () -> Unit, onAuthAction: () -> Unit) {
     Scaffold(topBar = {
         CenterAlignedTopAppBar(
             title = { Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("enj0y", fontWeight = FontWeight.Bold); Text("SOLUTION", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary) } },
-            actions = { CartButton(cart?.itemCount ?: 0, onCartClick); IconButton(onClick = onLogout) { Icon(Icons.AutoMirrored.Filled.Logout, "Log out") } }
+            actions = { CartButton(cart?.itemCount ?: 0, onCartClick); IconButton(onClick = onAuthAction) { Icon(Icons.AutoMirrored.Filled.Logout, if (authenticated) "Log out" else "Sign in") } }
         )
     }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
@@ -132,7 +134,7 @@ fun ProductDetailsScreen(product: Product?, loading: Boolean, error: String?, on
 }
 
 @Composable
-fun CartScreen(state: CartState, onBack: () -> Unit, onRefresh: () -> Unit, onIncrease: (CartItem) -> Unit, onDecrease: (CartItem) -> Unit, onRemove: (CartItem) -> Unit, onClear: () -> Unit) {
+fun CartScreen(state: CartState, authenticated: Boolean, onBack: () -> Unit, onRefresh: () -> Unit, onIncrease: (CartItem) -> Unit, onDecrease: (CartItem) -> Unit, onRemove: (CartItem) -> Unit, onClear: () -> Unit, onCheckout: () -> Unit) {
     val cart = state.cart
     Scaffold(topBar = { TopAppBar(title = { Text("Your cart") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }, actions = { IconButton(onClick = onRefresh, enabled = !state.loading) { Icon(Icons.Default.Refresh, "Refresh cart") } }) }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
@@ -148,7 +150,7 @@ fun CartScreen(state: CartState, onBack: () -> Unit, onRefresh: () -> Unit, onIn
                     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Items", color = MaterialTheme.colorScheme.onSurfaceVariant); Text(cart.itemCount.toString(), fontWeight = FontWeight.SemiBold) }
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Total", style = MaterialTheme.typography.titleMedium); Text(formatPrice(cart.total), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
-                        OutlinedButton(onClick = onClear, enabled = state.operationItemId == null && !state.loading, modifier = Modifier.fillMaxWidth()) { Text("Clear cart") }
+                        OutlinedButton(onClick = onClear, enabled = state.operationItemId == null && !state.loading, modifier = Modifier.fillMaxWidth()) { Text("Clear cart") }\n                        Button(onClick = onCheckout, enabled = state.operationItemId == null && !state.loading, modifier = Modifier.fillMaxWidth()) { Text(if (authenticated) "Checkout" else "Sign in to checkout") }
                     }
                 }
             }
@@ -173,4 +175,98 @@ fun CartScreen(state: CartState, onBack: () -> Unit, onRefresh: () -> Unit, onIn
             }
         }
     }
+}
+
+
+@Composable
+fun CheckoutScreen(
+    userName: String,
+    userEmail: String,
+    state: CheckoutState,
+    onBack: () -> Unit,
+    onSubmit: (CheckoutRequest) -> Unit
+) {
+    var name by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(userName) }
+    var email by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(userEmail) }
+    var phone by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("") }
+    var address by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("") }
+    var city by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("") }
+    var region by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("") }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Checkout") },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }
+            )
+        }
+    ) { padding ->
+        if (state.order != null) {
+            Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.padding(24.dp)
+                ) {
+                    Text("Order placed", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                    Text("Order #${state.order.orderNumber}")
+                    Button(onClick = onBack) { Text("Continue shopping") }
+                }
+            }
+        } else {
+            Column(
+                Modifier.fillMaxSize().padding(padding).padding(20.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text("Complete your order", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                Text("You need an account to checkout. Your cart stays available before sign in.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                state.error?.let {
+                    Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.errorContainer) {
+                        Text(it, Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onErrorContainer)
+                    }
+                }
+                CheckoutField("Full name", name) { name = it }
+                CheckoutField("Email", email) { email = it }
+                CheckoutField("Phone", phone) { phone = it }
+                CheckoutField("Address", address) { address = it }
+                CheckoutField("City", city) { city = it }
+                CheckoutField("State", region) { region = it }
+                CheckoutField("Country", "Nigeria") { }
+
+                Button(
+                    onClick = {
+                        onSubmit(
+                            CheckoutRequest(
+                                name = name.trim(),
+                                email = email.trim(),
+                                phone = phone.trim(),
+                                address = address.trim(),
+                                city = city.trim(),
+                                state = region.trim(),
+                                country = "Nigeria"
+                            )
+                        )
+                    },
+                    enabled = !state.submitting && name.isNotBlank() && email.isNotBlank() &&
+                        phone.isNotBlank() && address.isNotBlank() && city.isNotBlank() && region.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (state.submitting) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    else Text("Place order")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CheckoutField(label: String, value: String, onValueChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+        colors = ShopThemeDefaults.textFieldColors()
+    )
 }
