@@ -1,13 +1,16 @@
 package com.enjoy.shopmobile.ui.theme
 
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Shapes
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -32,15 +35,43 @@ private val ShopColors = darkColorScheme(
     onErrorContainer = Color(0xFFFFDAD6)
 )
 
+/*
+ * Keep text colors unspecified here.
+ *
+ * Material 3 components use the current content color from the theme.
+ * Hard-coding colors inside Typography can prevent component-level
+ * colors, such as OutlinedTextFieldDefaults.colors(), from propagating.
+ */
 private val ShopTypography = Typography().run {
     copy(
-        displaySmall = displaySmall.copy(fontWeight = FontWeight.Bold),
-        headlineLarge = headlineLarge.copy(fontWeight = FontWeight.Bold),
-        headlineMedium = headlineMedium.copy(fontWeight = FontWeight.Bold),
-        headlineSmall = headlineSmall.copy(fontWeight = FontWeight.Bold),
-        titleLarge = titleLarge.copy(fontWeight = FontWeight.Bold),
-        titleMedium = titleMedium.copy(fontWeight = FontWeight.SemiBold),
-        labelLarge = labelLarge.copy(fontWeight = FontWeight.SemiBold)
+        displaySmall = displaySmall.copy(
+            color = Color.Unspecified,
+            fontWeight = FontWeight.Bold
+        ),
+        headlineLarge = headlineLarge.copy(
+            color = Color.Unspecified,
+            fontWeight = FontWeight.Bold
+        ),
+        headlineMedium = headlineMedium.copy(
+            color = Color.Unspecified,
+            fontWeight = FontWeight.Bold
+        ),
+        headlineSmall = headlineSmall.copy(
+            color = Color.Unspecified,
+            fontWeight = FontWeight.Bold
+        ),
+        titleLarge = titleLarge.copy(
+            color = Color.Unspecified,
+            fontWeight = FontWeight.Bold
+        ),
+        titleMedium = titleMedium.copy(
+            color = Color.Unspecified,
+            fontWeight = FontWeight.SemiBold
+        ),
+        labelLarge = labelLarge.copy(
+            color = Color.Unspecified,
+            fontWeight = FontWeight.SemiBold
+        )
     )
 }
 
@@ -60,9 +91,9 @@ fun ShopTheme(content: @Composable () -> Unit) {
         shapes = ShopShapes
     ) {
         Surface(
-            modifier = androidx.compose.ui.Modifier.fillMaxSize(),
-            color = ShopColors.background,
-            contentColor = ShopColors.onBackground,
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background,
+            contentColor = MaterialTheme.colorScheme.onBackground,
             content = content
         )
     }
