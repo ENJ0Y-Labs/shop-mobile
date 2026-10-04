@@ -94,8 +94,10 @@ class CartViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
         if (!authenticated) {
-            visitorCart.update(item.product.id, item.quantity + 1)
-            loadVisitorCart()
+            viewModelScope.launch {
+                visitorCart.update(item.product.id, item.quantity + 1)
+                loadVisitorCart()
+            }
         } else {
             mutate(item.id) { repository.updateItem(item.id, item.quantity + 1) }
         }
@@ -105,8 +107,10 @@ class CartViewModel(application: Application) : AndroidViewModel(application) {
         if (item.quantity <= 1) {
             remove(item, authenticated)
         } else if (!authenticated) {
-            visitorCart.update(item.product.id, item.quantity - 1)
-            loadVisitorCart()
+            viewModelScope.launch {
+                visitorCart.update(item.product.id, item.quantity - 1)
+                loadVisitorCart()
+            }
         } else {
             mutate(item.id) { repository.updateItem(item.id, item.quantity - 1) }
         }
@@ -114,8 +118,10 @@ class CartViewModel(application: Application) : AndroidViewModel(application) {
 
     fun remove(item: CartItem, authenticated: Boolean) {
         if (!authenticated) {
-            visitorCart.remove(item.product.id)
-            loadVisitorCart()
+            viewModelScope.launch {
+                visitorCart.remove(item.product.id)
+                loadVisitorCart()
+            }
         } else {
             mutate(item.id) { repository.removeItem(item.id) }
         }
