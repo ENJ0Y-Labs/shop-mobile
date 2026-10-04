@@ -136,7 +136,7 @@ fun CartScreen(state: CartState, onBack: () -> Unit, onRefresh: () -> Unit, onIn
     val cart = state.cart
     Scaffold(topBar = { TopAppBar(title = { Text("Your cart") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }, actions = { IconButton(onClick = onRefresh, enabled = !state.loading) { Icon(Icons.Default.Refresh, "Refresh cart") } }) }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            state.error?.let { Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.errorContainer) { Text(it, color = MaterialTheme.colorScheme.onErrorContainer, Modifier.padding(14.dp)) } }
+            state.error?.let { Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.errorContainer) { Text(it, modifier = Modifier.padding(14.dp), color = MaterialTheme.colorScheme.onErrorContainer) } }
             if (state.loading && cart == null) LoadingState()
             else if (cart == null || cart.items.isEmpty()) {
                 Box(Modifier.fillMaxSize(), Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) { Text("Your cart is empty", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold); Text("Add something you like and it will appear here.", color = MaterialTheme.colorScheme.onSurfaceVariant); Button(onClick = onBack) { Text("Continue shopping") } } }
