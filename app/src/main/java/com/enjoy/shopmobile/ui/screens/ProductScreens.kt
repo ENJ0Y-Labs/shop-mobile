@@ -155,7 +155,8 @@ fun CartScreen(state: CartState, authenticated: Boolean, onBack: () -> Unit, onR
                     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Items", color = MaterialTheme.colorScheme.onSurfaceVariant); Text(cart.itemCount.toString(), fontWeight = FontWeight.SemiBold) }
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Total", style = MaterialTheme.typography.titleMedium); Text(formatPrice(cart.total), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
-                        OutlinedButton(onClick = onClear, enabled = state.operationItemId == null && !state.loading, modifier = Modifier.fillMaxWidth()) { Text("Clear cart") }\n                        Button(onClick = onCheckout, enabled = state.operationItemId == null && !state.loading, modifier = Modifier.fillMaxWidth()) { Text(if (authenticated) "Checkout" else "Sign in to checkout") }
+                        OutlinedButton(onClick = onClear, enabled = state.operationItemId == null && !state.loading, modifier = Modifier.fillMaxWidth()) { Text("Clear cart") }
+                        Button(onClick = onCheckout, enabled = state.operationItemId == null && !state.loading, modifier = Modifier.fillMaxWidth()) { Text(if (authenticated) "Checkout" else "Sign in to checkout") }
                     }
                 }
             }
