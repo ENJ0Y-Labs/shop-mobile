@@ -1,5 +1,5 @@
 <resources>
-    <style name="Theme.ShopMobile" parent="Theme.Material3.Dark.NoActionBar">
+    <style name="Theme.ShopMobile" parent="@android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:colorAccent">#FF7A00</item>
         <item name="android:navigationBarColor">#090909</item>
