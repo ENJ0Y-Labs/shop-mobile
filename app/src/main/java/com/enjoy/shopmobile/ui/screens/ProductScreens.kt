@@ -1,6 +1,6 @@
-package com.enjoy.shopmobile.ui.screens
+@file:OptIn(ExperimentalMaterial3Api::class)
 
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+package com.enjoy.shopmobile.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -14,6 +14,7 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -116,7 +117,7 @@ fun ProductDetailsScreen(product: Product?, loading: Boolean, error: String?, on
             else -> Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
                 ProductImage(product.imageUrl, product.name, Modifier.fillMaxWidth().height(320.dp))
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(product.category ?: "Shop", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    Text(product.category, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                     Text(product.name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                     Text(formatPrice(product.price), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                     Text(product.description ?: "No description available.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
@@ -133,7 +134,7 @@ fun ProductDetailsScreen(product: Product?, loading: Boolean, error: String?, on
 @Composable
 fun CartScreen(state: CartState, onBack: () -> Unit, onRefresh: () -> Unit, onIncrease: (CartItem) -> Unit, onDecrease: (CartItem) -> Unit, onRemove: (CartItem) -> Unit, onClear: () -> Unit) {
     val cart = state.cart
-    Scaffold(topBar = { TopAppBar(title = { Text("Your cart") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } }, actions = { IconButton(onClick = onRefresh, enabled = !state.loading) { Icon(Icons.Default.Refresh, "Refresh cart") } }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text("Your cart") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }, actions = { IconButton(onClick = onRefresh, enabled = !state.loading) { Icon(Icons.Default.Refresh, "Refresh cart") } }) }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             state.error?.let { Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.errorContainer) { Text(it, color = MaterialTheme.colorScheme.onErrorContainer, Modifier.padding(14.dp)) } }
             if (state.loading && cart == null) LoadingState()
