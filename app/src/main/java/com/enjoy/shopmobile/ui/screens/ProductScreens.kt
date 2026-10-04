@@ -16,6 +16,10 @@ import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Alignment
@@ -32,6 +36,7 @@ import com.enjoy.shopmobile.data.model.CheckoutRequest
 import com.enjoy.shopmobile.viewmodel.CheckoutState
 import com.enjoy.shopmobile.viewmodel.CartState
 import com.enjoy.shopmobile.viewmodel.ProductListState
+import com.enjoy.shopmobile.ui.theme.ShopThemeDefaults
 import java.util.Locale
 
 private fun formatPrice(price: Long): String {
@@ -186,12 +191,12 @@ fun CheckoutScreen(
     onBack: () -> Unit,
     onSubmit: (CheckoutRequest) -> Unit
 ) {
-    var name by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(userName) }
-    var email by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(userEmail) }
-    var phone by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("") }
-    var address by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("") }
-    var city by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("") }
-    var region by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("") }
+    var name by rememberSaveable { mutableStateOf(userName) }
+    var email by rememberSaveable { mutableStateOf(userEmail) }
+    var phone by rememberSaveable { mutableStateOf("") }
+    var address by rememberSaveable { mutableStateOf("") }
+    var city by rememberSaveable { mutableStateOf("") }
+    var region by rememberSaveable { mutableStateOf("") }
 
     Scaffold(
         topBar = {
