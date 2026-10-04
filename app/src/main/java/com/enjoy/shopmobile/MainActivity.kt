@@ -24,6 +24,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.enjoy.shopmobile.ui.screens.CartScreen
+import com.enjoy.shopmobile.ui.screens.CheckoutScreen
 import com.enjoy.shopmobile.ui.screens.ProductDetailsScreen
 import com.enjoy.shopmobile.ui.screens.ProductListScreen
 import com.enjoy.shopmobile.ui.theme.ShopTheme
@@ -31,6 +32,7 @@ import com.enjoy.shopmobile.ui.theme.ShopThemeDefaults
 import com.enjoy.shopmobile.viewmodel.AuthState
 import com.enjoy.shopmobile.viewmodel.AuthViewModel
 import com.enjoy.shopmobile.viewmodel.CartViewModel
+import com.enjoy.shopmobile.viewmodel.CheckoutViewModel
 import com.enjoy.shopmobile.viewmodel.ProductDetailsState
 import com.enjoy.shopmobile.viewmodel.ProductViewModel
 
@@ -46,73 +48,96 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class ShopScreen { PRODUCTS, DETAILS, CART }
+private enum class ShopScreen { PRODUCTS, DETAILS, CART, CHECKOUT }
 
 @Composable
 private fun ShopApp() {
     val authViewModel: AuthViewModel = viewModel()
     val productViewModel: ProductViewModel = viewModel()
     val cartViewModel: CartViewModel = viewModel()
+    val checkoutViewModel: CheckoutViewModel = viewModel()
+
     val authState by authViewModel.state.collectAsState()
     val productState by productViewModel.state.collectAsState()
     val detailsState by productViewModel.detailsState.collectAsState()
     val cartState by cartViewModel.state.collectAsState()
+    val checkoutState by checkoutViewModel.state.collectAsState()
+
     var screen by rememberSaveable { mutableStateOf(ShopScreen.PRODUCTS) }
     var showRegister by rememberSaveable { mutableStateOf(false) }
-    val lifecycleOwner = LocalLifecycleOwner.current
+    var showAuth by rememberSaveable { mutableStateOf(false) }
+    var checkoutAfterLogin by rememberSaveable { mutableStateOf(false) }
+
+    val authenticated = authState is AuthState.Authenticated
+    val user = (authState as? AuthState.Authenticated)?.user
+
+    LaunchedEffect(Unit) {
+        productViewModel.loadProducts()
+        cartViewModel.loadCart(authenticated = false)
+    }
 
     LaunchedEffect(authState) {
-        if (authState is AuthState.Authenticated) {
-            productViewModel.loadProducts()
-            cartViewModel.loadCart()
-            screen = ShopScreen.PRODUCTS
+        val isAuthenticated = authState is AuthState.Authenticated
+        cartViewModel.loadCart(authenticated = isAuthenticated)
+        if (isAuthenticated) {
+            showAuth = false
             showRegister = false
+            if (checkoutAfterLogin) {
+                checkoutAfterLogin = false
+                screen = ShopScreen.CHECKOUT
+            }
         }
     }
 
-    LaunchedEffect(screen) {
-        if (authState is AuthState.Authenticated && screen == ShopScreen.CART) {
-            cartViewModel.loadCart()
-        }
-    }
-
-    DisposableEffect(lifecycleOwner, screen, authState) {
-        if (authState !is AuthState.Authenticated || screen != ShopScreen.CART) {
-            onDispose { }
-        } else {
-            val observer = LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_RESUME) {
-                    cartViewModel.loadCart(showLoading = false)
+    when {
+        showAuth && !authenticated -> {
+            if (showRegister) {
+                RegisterScreen(authState.let { (it as? AuthState.Unauthenticated)?.message }, authViewModel) {
+                    showRegister = false
+                    authViewModel.clearMessage()
+                }
+            } else {
+                LoginScreen(authState.let { (it as? AuthState.Unauthenticated)?.message }, authViewModel) {
+                    showRegister = true
+                    authViewModel.clearMessage()
                 }
             }
-            lifecycleOwner.lifecycle.addObserver(observer)
-            onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
         }
-    }
 
-    when (val auth = authState) {
-        AuthState.Unknown, AuthState.Loading -> LoadingScreen()
-        is AuthState.Unauthenticated -> if (showRegister) {
-            RegisterScreen(auth.message, authViewModel) {
-                showRegister = false
-                authViewModel.clearMessage()
-            }
-        } else {
-            LoginScreen(auth.message, authViewModel) {
-                showRegister = true
-                authViewModel.clearMessage()
-            }
-        }
-        is AuthState.Authenticated -> when (screen) {
-            ShopScreen.PRODUCTS -> ProductListScreen(
-                productState,
-                cartState.cart,
-                auth.user.name,
-                { productViewModel.openProduct(it); screen = ShopScreen.DETAILS },
-                { productViewModel.loadProducts(); cartViewModel.loadCart() },
-                { cartViewModel.loadCart(); screen = ShopScreen.CART },
-                { authViewModel.logout() }
+        screen == ShopScreen.CHECKOUT && authenticated && user != null -> {
+            CheckoutScreen(
+                userName = user.name,
+                userEmail = user.email,
+                state = checkoutState,
+                onBack = { screen = ShopScreen.CART },
+                onSubmit = { checkoutViewModel.submit(it) }
             )
+        }
+
+        else -> when (screen) {
+            ShopScreen.PRODUCTS -> ProductListScreen(
+                state = productState,
+                cart = cartState.cart,
+                userName = user?.name ?: "there",
+                authenticated = authenticated,
+                onProductClick = { productViewModel.openProduct(it); screen = ShopScreen.DETAILS },
+                onRefresh = {
+                    productViewModel.loadProducts()
+                    cartViewModel.loadCart(authenticated)
+                },
+                onCartClick = {
+                    cartViewModel.loadCart(authenticated)
+                    screen = ShopScreen.CART
+                },
+                onAuthAction = {
+                    if (authenticated) authViewModel.logout()
+                    else {
+                        checkoutAfterLogin = false
+                        showAuth = true
+                    }
+                }
+            )
+
             ShopScreen.DETAILS -> {
                 val detail = detailsState
                 ProductDetailsScreen(
@@ -121,23 +146,36 @@ private fun ShopApp() {
                     error = (detail as? ProductDetailsState.Error)?.message,
                     onBack = { productViewModel.closeProduct(); screen = ShopScreen.PRODUCTS },
                     onRetry = { if (detail is ProductDetailsState.Error) productViewModel.openProduct(detail.productId) },
-                    onAddToCart = { cartViewModel.addItem(it) },
+                    onAddToCart = { cartViewModel.addItem(it, authenticated) },
                     adding = cartState.operationItemId == "add",
                     cartItemCount = cartState.cart?.itemCount ?: 0
                 ) {
-                    cartViewModel.loadCart()
+                    cartViewModel.loadCart(authenticated)
                     screen = ShopScreen.CART
                 }
             }
+
             ShopScreen.CART -> CartScreen(
-                cartState,
-                { screen = ShopScreen.PRODUCTS },
-                { cartViewModel.loadCart() },
-                { cartViewModel.increase(it.id, it.quantity, it.product.stock) },
-                { cartViewModel.decrease(it.id, it.quantity) },
-                { cartViewModel.remove(it.id) },
-                { cartViewModel.clear() }
+                state = cartState,
+                authenticated = authenticated,
+                onBack = { screen = ShopScreen.PRODUCTS },
+                onRefresh = { cartViewModel.loadCart(authenticated) },
+                onIncrease = { cartViewModel.increase(it, authenticated) },
+                onDecrease = { cartViewModel.decrease(it, authenticated) },
+                onRemove = { cartViewModel.remove(it, authenticated) },
+                onClear = { cartViewModel.clear(authenticated) },
+                onCheckout = {
+                    if (authenticated) {
+                        screen = ShopScreen.CHECKOUT
+                    } else {
+                        checkoutAfterLogin = true
+                        showRegister = false
+                        showAuth = true
+                    }
+                }
             )
+
+            ShopScreen.CHECKOUT -> Unit
         }
     }
 }
